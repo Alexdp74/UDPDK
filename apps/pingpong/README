@@ -1,5 +1,5 @@
 Ping host:
-    sudo ./pingpong -c ../../config.ini -f ping -d 10000 -l pingpong.log
+    sudo LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/../../deps/dpdk/install/lib/x86_64-linux-gnu/ ./pingpong -c ../../config.ini -f ping -d 10000 -l pingpong.log
 
 Pong host:
-    sudo ./pingpong -c ../../config.ini -f pong
+    sudo LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/../../deps/dpdk/install/lib/x86_64-linux-gnu/ ./pingpong -c ../../config.ini -f pong

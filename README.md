@@ -64,7 +64,7 @@ UDPDK requires:
 - inih (any)
 
 They are already included in this repository as submodules, so pull them:
-```
+```bash
 git submodule init
 git submodule update
 ```
@@ -72,23 +72,16 @@ git submodule update
 **DPDK**
 
 [DPDK](dpdk.org) is the pivotal element of UDPDK. It manages the NIC and implements Ethernet.
+```bash
+cd dpdk
+meson build --prefix $(pwd)/install
+ninja -C build install
 ```
-cd dpdk/usertools
-./dpdk-setup.sh
-```
-From the menu, do the following:
-1. Compile for your specific arch, usually `x86_64-native-linuxapp-gcc`
-2. Load the `vfio` module
-3. Configure hugepages (e.g. 1024M for each NUMA node)
-4. Bind the NIC to vfio driver, specifying its PCI address
-
-> :warning: **If you use the VFIO driver**, then you must enable the IOMMU in your system.  
-> To enable it, open `/etc/default/grub`, add the flag `intel_iommu=on` in `GRUB_CMDLINE_LINUX_DEFAULT`, then `sudo update-grub` and finally reboot.
 
 **inih**
 
 [inih](https://github.com/benhoyt/inih) is used for convenience to parse `.ini` configuration files.
-```
+```bash
 cd inih
 meson build
 cd build
@@ -99,8 +92,9 @@ ninja
 
 UDPDK builds into a static library, which eventually needs to be linked with the final application.
 
-```
+```bash
 cd udpdk
+export RTE_TARGET=x86_64-linux-gnu # you might want to change this according to the dpdk compilation
 make
 sudo make install
 ```
@@ -140,30 +134,30 @@ UDPDK runs in two separate processes: the primary is the one containing the appl
 
 We compare UDPDK against standard UDP sockets in terms of throughput and latency.
 
-**Environment**  
+**Environment**
 
 Two identical servers are connected point-to-point on a 10G interface. Their specs are:
 
-*CPU:* Intel Xeon E5-2640 @2.4GHz  
-*RAM:* 64GB  
-*OS:* Ubuntu 18.04  
-*Kernel:* 4.15.0  
-*NIC:* Intel X710 DA2 10GbE  
+*CPU:* Intel Xeon E5-2640 @2.4GHz
+*RAM:* 64GB
+*OS:* Ubuntu 18.04
+*Kernel:* 4.15.0
+*NIC:* Intel X710 DA2 10GbE
 *NIC driver:* VFIO (DPDK) or i40e (normal sockets)
 
 **Throughput**
 
-We measure the maximum throughput achieved varying the packet size.  
+We measure the maximum throughput achieved varying the packet size.
 The latter is inclusive of the UDP, IP and MAC headers.
 
-As shown in the picture, UDPDK is up to **18x better** than traditional sockets.  
+As shown in the picture, UDPDK is up to **18x better** than traditional sockets.
 It should be noted that UDPDK saturates the 10G connection, which unfortunately is all we had: a 40G inferface would make it definitely shine!
 
 ![Throughput chart](media/throughput_benchmark.png)
 
 **Latency**
 
-We measure the latency and its jitter.  
+We measure the latency and its jitter.
 Again, UDPDK proves to be an order of magnitude better than standard sockets.
 
 | | UDPDK | Standard |

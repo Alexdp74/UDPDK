@@ -17,15 +17,18 @@ endif
 # all source are stored in SRCS-y
 SRCS= main.c
 
+UDPDK_DPDK=${DEPSDIR}/dpdk/install/lib/${RTE_TARGET}/
+
 LIBS+= -L${UDPDK_PATH}/udpdk -Wl,--whole-archive,-ludpdk,--no-whole-archive
-LIBS+= -L${DEPSDIR}/dpdk/${RTE_TARGET}/lib -ldpdk
+LIBS+= $(shell PKG_CONFIG_PATH=${UDPDK_DPDK}/pkgconfig pkg-config --libs libdpdk)
 LIBS+= -Wl,--no-whole-archive -lrt -lm -ldl -lcrypto -pthread -lnuma
 
 CFLAGS += $(WERROR_FLAGS) -O3
+UDPDK_CFLAGS = $(shell PKG_CONFIG_PATH=${UDPDK_DPDK}/pkgconfig pkg-config --cflags libdpdk)
 
 TARGET="pingpong"
 all:
-	cc -I${ROOTDIR}/udpdk -I${ROOTDIR}/udpdk/list -I${DEPSDIR}/dpdk/${RTE_TARGET}/include -o ${TARGET} ${SRCS} ${LIBS}
+	cc -I${ROOTDIR}/udpdk -I${ROOTDIR}/udpdk/list ${UDPDK_CFLAGS} -o ${TARGET} ${SRCS} ${LIBS}
 
 .PHONY: clean
 clean:

@@ -21,7 +21,7 @@
 
 #define PORT_PING   10000
 #define PORT_PONG   10001
-#define IP_PONG     "172.31.100.1"
+#define IP_PONG     "10.10.1.2"
 #define MAX_SAMPLES 100000
 
 typedef enum {PING, PONG} app_mode;
@@ -84,8 +84,10 @@ static void ping_body(void)
         destaddr.sin_addr.s_addr = inet_addr(IP_PONG);
         destaddr.sin_port = htons(PORT_PONG);
         clock_gettime(CLOCK_REALTIME, &ts);
-        udpdk_sendto(sock, (void *)&ts, sizeof(struct timespec), 0,
+        udpdk_sendto(sock, (void *)"hello", 6, 0,
                 (const struct sockaddr *) &destaddr, sizeof(destaddr));
+        //udpdk_sendto(sock, (void *)&ts, sizeof(struct timespec), 0,
+        //        (const struct sockaddr *) &destaddr, sizeof(destaddr));
 
         // Get pong response
         n = udpdk_recvfrom(sock, (void *)&ts_msg, sizeof(struct timespec), 0, NULL, NULL);
