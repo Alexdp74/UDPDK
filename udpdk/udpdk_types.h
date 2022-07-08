@@ -67,6 +67,7 @@ typedef struct {
     struct in_addr src_ip_addr;
     char lcores_primary[MAX_ARG_LEN];
     char lcores_secondary[MAX_ARG_LEN];
+    char device[MAX_ARG_LEN];
     int n_mem_channels;
 } configuration;
 

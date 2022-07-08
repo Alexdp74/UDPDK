@@ -39,6 +39,8 @@ static int parse_handler(void* configuration, const char* section, const char* n
         strncpy(config.lcores_primary, value, MAX_ARG_LEN-1);
     } else if (MATCH("dpdk", "lcores_secondary")) {
         strncpy(config.lcores_secondary, value, MAX_ARG_LEN-1);
+    } else if (MATCH("dpdk", "device")) {
+        strncpy(config.device, value, MAX_ARG_LEN-1);
     } else if (MATCH("dpdk", "n_mem_channels")) {
         config.n_mem_channels = atoi(value);
     } else {
@@ -54,6 +56,14 @@ static int setup_primary_secondary_args(int argc, char *argv[])
     primary_argc = 0;
     primary_argv[primary_argc] = malloc(strlen(progname)+1);
     snprintf(primary_argv[primary_argc], MAX_ARG_LEN, "%s", progname);
+	 if (strlen(config.device) > 0) {
+		primary_argc++;
+    	primary_argv[primary_argc] = malloc(3);
+    	snprintf(primary_argv[primary_argc], 3, "-w");
+    	primary_argc++;
+    	primary_argv[primary_argc] = malloc(strlen(config.device)+1);
+    	snprintf(primary_argv[primary_argc], MAX_ARG_LEN, "%s", config.device);
+	 }
     primary_argc++;
     primary_argv[primary_argc] = malloc(3);
     snprintf(primary_argv[primary_argc], 3, "-l");
@@ -75,7 +85,15 @@ static int setup_primary_secondary_args(int argc, char *argv[])
     secondary_argc = 0;
     secondary_argv[secondary_argc] = malloc(strlen(progname)+1);
     snprintf(secondary_argv[secondary_argc], MAX_ARG_LEN, "%s", progname);
-    secondary_argc++;
+	 if (strlen(config.device) > 0) {
+		secondary_argc++;
+    	secondary_argv[secondary_argc] = malloc(3);
+    	snprintf(secondary_argv[secondary_argc], 3, "-w");
+    	secondary_argc++;
+    	secondary_argv[secondary_argc] = malloc(strlen(config.device)+1);
+    	snprintf(secondary_argv[secondary_argc], MAX_ARG_LEN, "%s", config.device);
+	 }
+	 secondary_argc++;
     secondary_argv[secondary_argc] = malloc(3);
     snprintf(secondary_argv[secondary_argc], 3, "-l");
     secondary_argc++;
