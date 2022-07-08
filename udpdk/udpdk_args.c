@@ -36,9 +36,9 @@ static int parse_handler(void* configuration, const char* section, const char* n
             return 0;
         }
     } else if (MATCH("dpdk", "lcores_primary")) {
-        strncpy(config.lcores_primary, value, MAX_ARG_LEN);
+        strncpy(config.lcores_primary, value, MAX_ARG_LEN-1);
     } else if (MATCH("dpdk", "lcores_secondary")) {
-        strncpy(config.lcores_secondary, value, MAX_ARG_LEN);
+        strncpy(config.lcores_secondary, value, MAX_ARG_LEN-1);
     } else if (MATCH("dpdk", "n_mem_channels")) {
         config.n_mem_channels = atoi(value);
     } else {
