@@ -134,15 +134,15 @@ static int init_port(uint16_t port_num)
 
     const struct rte_eth_conf port_conf = {
         .rxmode = {
-            .mq_mode = ETH_MQ_RX_RSS,
-            .max_rx_pkt_len = RTE_MIN(JUMBO_FRAME_MAX_SIZE, dev_info.max_rx_pktlen),
+            .mq_mode = RTE_ETH_MQ_RX_NONE,
+    //        .max_rx_pkt_len = RTE_MIN(JUMBO_FRAME_MAX_SIZE, dev_info.max_rx_pktlen),
             .split_hdr_size = 0,
-            .offloads = (DEV_RX_OFFLOAD_CHECKSUM |
-                         DEV_RX_OFFLOAD_SCATTER |
-                         DEV_RX_OFFLOAD_JUMBO_FRAME),
+            .offloads = (RTE_ETH_RX_OFFLOAD_CHECKSUM |
+                         RTE_ETH_RX_OFFLOAD_SCATTER),
+//                         RTE_ETH_RX_OFFLOAD_JUMBO_FRAME),
         },
         .txmode = {
-            .offloads = DEV_TX_OFFLOAD_MULTI_SEGS,
+            .offloads = RTE_ETH_TX_OFFLOAD_MULTI_SEGS,
         }
     };
 

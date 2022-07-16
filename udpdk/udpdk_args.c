@@ -59,7 +59,7 @@ static int setup_primary_secondary_args(int argc, char *argv[])
 	 if (strlen(config.device) > 0) {
 		primary_argc++;
     	primary_argv[primary_argc] = malloc(3);
-    	snprintf(primary_argv[primary_argc], 3, "-w");
+    	snprintf(primary_argv[primary_argc], 3, "-a");
     	primary_argc++;
     	primary_argv[primary_argc] = malloc(strlen(config.device)+1);
     	snprintf(primary_argv[primary_argc], MAX_ARG_LEN, "%s", config.device);
@@ -88,7 +88,7 @@ static int setup_primary_secondary_args(int argc, char *argv[])
 	 if (strlen(config.device) > 0) {
 		secondary_argc++;
     	secondary_argv[secondary_argc] = malloc(3);
-    	snprintf(secondary_argv[secondary_argc], 3, "-w");
+    	snprintf(secondary_argv[secondary_argc], 3, "-a");
     	secondary_argc++;
     	secondary_argv[secondary_argc] = malloc(strlen(config.device)+1);
     	snprintf(secondary_argv[secondary_argc], MAX_ARG_LEN, "%s", config.device);
