@@ -142,7 +142,10 @@ static int init_port(uint16_t port_num)
 //                         RTE_ETH_RX_OFFLOAD_JUMBO_FRAME),
         },
         .txmode = {
-            .offloads = RTE_ETH_TX_OFFLOAD_MULTI_SEGS,
+				.offloads = RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
+					RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+					RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE,
+					.mq_mode = RTE_ETH_MQ_TX_NONE,
         }
     };
 
@@ -360,6 +363,7 @@ int udpdk_init(int argc, char *argv[])
         RTE_LOG(INFO, INIT, "Waiting for the poller to complete its inialization...\n");
         ipc_wait_for_poller();
     } else {  // child -> packet poller
+			usleep(5000000);
         if (poller_init(secondary_argc, (char **)secondary_argv) < 0) {
             RTE_LOG(INFO, INIT, "Poller initialization failed\n");
             return -1;
