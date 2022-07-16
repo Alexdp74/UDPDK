@@ -24,7 +24,7 @@
 
 #define PORT_SEND   10000
 #define PORT_RECV   10001
-#define IP_RECV     "172.31.100.1"
+#define IP_RECV     "10.10.1.2"
 
 #define ETH_HDR_LEN 14
 #define IP_HDR_LEN  20
@@ -48,6 +48,10 @@ const char mydata[2048] = {
 };
 
 typedef enum {SEND, RECV} app_mode;
+typedef int bool;
+
+#define false 0
+#define true 1
 
 static app_mode mode = SEND;
 static int pktlen = 64;
