@@ -414,15 +414,8 @@ static inline void reassemble(struct rte_mbuf *m, uint16_t portid, uint32_t queu
 
 static inline void flush_tx_table(struct rte_mbuf **tx_mbuf_table, uint16_t tx_count)
 {
-	 RTE_LOG(INFO, POLLBODY, "Flush tx table with %u packets\n", tx_count);
-	 int i;
-	 for (i=0;i<tx_count;i++) {
-        udpdk_dump_mbuf(tx_mbuf_table[i]);
-	 }
-
     int tx_sent;
     tx_sent = rte_eth_tx_burst(PORT_TX, QUEUE_TX, tx_mbuf_table, tx_count);
-	 RTE_LOG(INFO, POLLBODY, "After tx_burst, tx_sent = %d, tx_count = %d)\n", tx_sent, tx_count);
     if (unlikely(tx_sent < tx_count)) {
         // Free unsent mbufs
         do {

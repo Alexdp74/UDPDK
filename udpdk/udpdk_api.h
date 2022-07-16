@@ -14,8 +14,6 @@ extern "C" {
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "udpdk_types.h"
-
 int udpdk_init(int argc, char *argv[]);
 
 void udpdk_interrupt(int signum);
