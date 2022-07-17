@@ -340,6 +340,8 @@ int main(int argc, char *argv[])
     }
     printf("App: UDPDK Intialized\n");
 
+	 usleep(10000000);
+
     // Parse app-specific arguments
     printf("Parsing app arguments...\n");
     retval = parse_app_args(argc, argv);

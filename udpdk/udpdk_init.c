@@ -144,6 +144,8 @@ static int init_port(uint16_t port_num)
         .txmode = {
 				.offloads = RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
 					RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+					RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+					RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
 					RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE,
 					.mq_mode = RTE_ETH_MQ_TX_NONE,
         }
