@@ -1,5 +1,6 @@
 use rustudpdk::*;
 use std::env;
+use std::io::ErrorKind;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -38,6 +39,7 @@ fn ping_body(app_alive: Arc<Mutex<bool>>) {
 
         let mut buf = [0u8; 100];
         let retval = s.recvfrom(&mut buf, 0);
+        //let retval = s.recvfrom(&mut buf, MSG_DONTWAIT); // non-blocking call
         match retval {
             Ok((sz, _from)) => {
                 let deserialized_time: SystemTime = bincode::deserialize(&buf[..sz]).unwrap();
@@ -48,7 +50,10 @@ fn ping_body(app_alive: Arc<Mutex<bool>>) {
                     Err(e) => eprintln!("Error {}", e),
                 }
             }
-            Err(e) => eprintln!("Error {}", e),
+            Err(e) if e.kind() != ErrorKind::WouldBlock => {
+                eprintln!("Error {}", e);
+            }
+            _ => (),
         }
 
         thread::sleep(Duration::new(1, 0));

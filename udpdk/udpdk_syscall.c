@@ -384,8 +384,8 @@ static int recvfrom_validate_args(int sockfd, void *buf, size_t len, int flags,
 
     // TODO check if buf is a legit address
 
-    // Check if flags are supported (atm none is supported)
-    if (flags != 0) {
+    // Check if flags are supported (atm only MSG_DONTWAIT is supported)
+    if (flags != 0 && !(flags & MSG_DONTWAIT)) {
         errno = EINVAL;
         return -1;
     }
@@ -420,9 +420,14 @@ ssize_t udpdk_recvfrom(int sockfd, void *buf, size_t len, int flags,
         return -1;
     }
 
-    // Dequeue one packet (busy wait until one is available)
+    // Dequeue one packet (busy wait until one is available
+	 // or return early if it would block and MSG_DONTWAIT is set)
     while (ret < 0 && !interrupted) {
         ret = rte_ring_dequeue(exch_slots[sockfd].rx_q, (void **)&pkt);
+		  if (ret != 0 && (flags & MSG_DONTWAIT)) {
+			  errno = EWOULDBLOCK;
+			  return -1;
+		  }
     }
     if (interrupted) {
         RTE_LOG(INFO, SYSCALL, "Recvfrom returning due to signal\n");

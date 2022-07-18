@@ -153,7 +153,7 @@ impl UDPDK {
 
     /// Receive data on UDPDK socket sockfd and place it in buf. Returns a Result<(bytes read, sender
     /// SocketAddr)>.
-    pub fn recvfrom(&self, buf: &mut [u8], flags: i32) -> Result<(usize, SocketAddr), Error> {
+    pub fn recvfrom(&self, buf: &mut [u8], flags: u32) -> Result<(usize, SocketAddr), Error> {
         let mut src_addr = sockaddr_in {
             sin_family: AF_INET as sa_family_t,
             sin_port: 0,
@@ -167,7 +167,7 @@ impl UDPDK {
                 self.sockfd,
                 buf.as_mut_ptr() as *mut c_void,
                 buf.len().try_into().unwrap(),
-                flags,
+                flags.try_into().unwrap(),
                 &mut src_addr as *mut _ as *mut sockaddr,
                 &mut addr_len,
             )

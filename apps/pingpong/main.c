@@ -89,22 +89,22 @@ static void ping_body(void)
         udpdk_sendto(sock, (void *)&ts, sizeof(struct timespec), 0,
                 (const struct sockaddr *) &destaddr, sizeof(destaddr));
 
-        // Get pong response
-        n = udpdk_recvfrom(sock, (void *)&ts_msg, sizeof(struct timespec), 0, NULL, NULL);
-        if (n > 0) {
-            clock_gettime(CLOCK_REALTIME, &ts_now);
-            ts.tv_sec = ts_now.tv_sec - ts_msg.tv_sec;
-            ts.tv_nsec = ts_now.tv_nsec - ts_msg.tv_nsec;
-            if (ts.tv_nsec < 0) {
-                ts.tv_nsec += 1000000000;
-                ts.tv_sec--;
-            }
-            if (log_enabled) {
-                samples[n_samples++] = (int)ts.tv_sec * 1000000000 + (int)ts.tv_nsec;
-            } else {
-                printf("Received pong; delta = %d.%09d seconds\n", (int)ts.tv_sec, (int)ts.tv_nsec);
-            }
-        }
+		  // Get pong response
+		  n = udpdk_recvfrom(sock, (void *)&ts_msg, sizeof(struct timespec), 0, NULL, NULL);
+		  if (n > 0) {
+			  clock_gettime(CLOCK_REALTIME, &ts_now);
+			  ts.tv_sec = ts_now.tv_sec - ts_msg.tv_sec;
+			  ts.tv_nsec = ts_now.tv_nsec - ts_msg.tv_nsec;
+			  if (ts.tv_nsec < 0) {
+				  ts.tv_nsec += 1000000000;
+				  ts.tv_sec--;
+			  }
+			  if (log_enabled) {
+				  samples[n_samples++] = (int)ts.tv_sec * 1000000000 + (int)ts.tv_nsec;
+			  } else {
+				  printf("Received pong; delta = %d.%09d seconds\n", (int)ts.tv_sec, (int)ts.tv_nsec);
+			  }
+		  }
 
         usleep(delay);
     }
