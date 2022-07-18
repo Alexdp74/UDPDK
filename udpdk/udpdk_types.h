@@ -63,7 +63,6 @@ struct exch_slot {
 /* Global configuration (parsed from file) */
 typedef struct {
     struct rte_ether_addr src_mac_addr;
-    struct rte_ether_addr dst_mac_addr;
     struct in_addr src_ip_addr;
     char lcores_primary[MAX_ARG_LEN];
     char lcores_secondary[MAX_ARG_LEN];

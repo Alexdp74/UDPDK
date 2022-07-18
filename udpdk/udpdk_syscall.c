@@ -11,6 +11,7 @@
 
 #include "udpdk_api.h"
 #include "udpdk_bind_table.h"
+#include "udpdk_arp.h"
 
 #define RTE_LOGTYPE_SYSCALL RTE_LOGTYPE_USER1
 
@@ -311,10 +312,17 @@ ssize_t udpdk_sendto(int sockfd, const void *buf, size_t len, int flags,
         return -1;
     }
 
+	 struct rte_ether_addr* dst_mac = udpdk_arp_lookup_ip(&dest_addr_in->sin_addr);
+	 if (!dst_mac) {
+        RTE_LOG(ERR, SYSCALL, "Sendto didn't find MAC for dest IP %s in its ARP table\n", inet_ntoa(dest_addr_in->sin_addr));
+        errno = EDESTADDRREQ;
+        return -1;
+	 }
+
     // Initialize the Ethernet header
     eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
     rte_ether_addr_copy(&config.src_mac_addr, &eth_hdr->src_addr);
-    rte_ether_addr_copy(&config.dst_mac_addr, &eth_hdr->dst_addr);
+    rte_ether_addr_copy(dst_mac, &eth_hdr->dst_addr);
     eth_hdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
 
     // Initialize the IP header
