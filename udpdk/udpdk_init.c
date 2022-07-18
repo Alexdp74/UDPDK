@@ -36,6 +36,7 @@
 #define RTE_LOGTYPE_INTR RTE_LOGTYPE_USER1
 
 extern int interrupted;
+extern configuration config;
 extern struct exch_zone_info *exch_zone_desc;
 extern struct exch_slot *exch_slots;
 extern struct rte_mempool *rx_pktmbuf_pool;
@@ -198,6 +199,9 @@ static int init_port(uint16_t port_num)
         RTE_LOG(ERR, INIT, "Could not start port %d\n", port_num);
         return retval;
     }
+
+	 // Set the source MAC address
+	 rte_eth_macaddr_get(port_num, &config.src_mac_addr);
 
     RTE_LOG(INFO, INIT, "Initialized port %d.\n", port_num);
     return 0;

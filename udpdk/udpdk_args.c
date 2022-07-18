@@ -20,17 +20,12 @@ static char *progname;
 
 static int parse_handler(void* configuration, const char* section, const char* name, const char* value) {
 #define MATCH(s, n) strcmp(section, s) == 0 && strcmp(name, n) == 0
-    if (MATCH("port0", "mac_addr")) {
-        if (rte_ether_unformat_addr(value, &config.src_mac_addr) < 0) {
-            fprintf(stderr, "Can't parse MAC address: %s\n", value);
-            return 0;
-        }
-    } else if (MATCH("port0", "ip_addr")) {
+	if (MATCH("port0", "ip_addr")) {
         config.src_ip_addr.s_addr = inet_addr(value);
         if (config.src_ip_addr.s_addr == (in_addr_t)(-1)) {
             fprintf(stderr, "Can't parse IPv4 address: %s\n", value);
         }
-    }else if (MATCH("port0_dst", "mac_addr")) {
+    } else if (MATCH("port0_dst", "mac_addr")) {
         if (rte_ether_unformat_addr(value, &config.dst_mac_addr) < 0) {
             fprintf(stderr, "Can't parse MAC address: %s\n", value);
             return 0;
