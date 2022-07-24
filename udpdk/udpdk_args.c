@@ -209,24 +209,10 @@ int udpdk_parse_args(int argc, char *argv[])
 
 	progname = argv[0];
 
-	opterr = 0; // silence errors when encountering a flag that is not -c nor -a
-	while ((opt = getopt(argc, argv, "c:a:")) != EOF) {
-		switch (opt) {
-			/* .ini config file */
-			case 'c':
-				cfg_filename = optarg;
-				break;
+	// if using getopt, then the application might not be able to parse the arguments by itself later on
+	cfg_filename = argv[2];
+	arp_filename = argv[4];
 
-				/* static arp file */
-			case 'a':
-				arp_filename = optarg;
-				break;
-
-			default:
-				// this can be an application option
-				break;
-		}
-	}
 	argc -= 5;
 	argv += 5;
 

@@ -235,8 +235,10 @@ static int parse_app_args(int argc, char *argv[])
 
     progname = argv[0];
 
-    while ((c = getopt(argc, argv, "c:f:r:s:l:hd")) != -1) {
+    while ((c = getopt(argc, argv, "a:c:f:r:s:l:hd")) != -1) {
         switch (c) {
+            case 'a':
+                // this is for the static arp file needed by DPDK, not by the app
             case 'c':
                 // this is for the .ini cfg file needed by DPDK, not by the app
                 break;
