@@ -29,7 +29,8 @@ UDPDK_CFLAGS = $(shell PKG_CONFIG_PATH=${UDPDK_DPDK}/pkgconfig pkg-config --cfla
 TARGET="pktgen"
 all:
 	cc -I${ROOTDIR}/udpdk -I${ROOTDIR}/udpdk/list ${UDPDK_CFLAGS} -o ${TARGET} ${SRCS} ${LIBS}
+	cc ${CFLAGS} -o linux_pktgen linux_pktgen.c -lpthread
 
 .PHONY: clean
 clean:
-	rm -f *.o ${TARGET}
+	rm -f *.o ${TARGET} linux_pktgen
