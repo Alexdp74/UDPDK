@@ -8,6 +8,7 @@
 #include <rte_common.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
+#include <rte_lcore.h>
 
 #include "udpdk_shmalloc.h"
 
