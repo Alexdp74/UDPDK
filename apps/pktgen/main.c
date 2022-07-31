@@ -25,6 +25,7 @@
 #define PORT_SEND   10000
 #define PORT_RECV   10001
 #define IP_RECV     "10.10.1.2"
+#define MAX_PACKET_LEN 65535
 
 #define ETH_HDR_LEN 14
 #define IP_HDR_LEN  20
@@ -40,12 +41,6 @@ typedef struct stats_t {
     uint64_t bytes_sent_prev;
     uint64_t bytes_recv_prev;
 } stats_t;
-
-const char mydata[2048] = {
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aliquam varius semper faucibus. Vivamus consectetur pharetra massa. Nam at tellus semper, eleifend tellus elementum, pulvinar odio. Ut accumsan ligula ac ex rhoncus, nec pretium urna pharetra. Suspendisse potenti. Duis vel enim vel tellus dictum vehicula eu vitae elit. Etiam at lacus varius diam rutrum accumsan quis sed velit. Nulla tortor mi, congue sit amet malesuada sit amet, pellentesque ac mi. Nunc feugiat mi vitae turpis elementum maximus. Sed malesuada mi ac rhoncus condimentum. Nunc venenatis, libero a pharetra molestie, risus orci tempus arcu, sit amet molestie ipsum purus ac urna. Nunc nec ligula massa. Aenean ut libero ut erat tincidunt aliquet."
-        "Praesent consequat, dui nec pellentesque dapibus, lorem orci placerat sem, consectetur egestas metus lacus eu purus. Sed scelerisque, lorem nec euismod laoreet, sem tellus tincidunt lorem, eu faucibus tortor massa at sapien. Maecenas commodo consectetur leo, non rhoncus sem ullamcorper ut. Proin in purus quis ante posuere rutrum sed ut nisl. Etiam pretium egestas purus sed egestas. Vivamus ut suscipit neque. Donec eleifend magna ut mauris pellentesque, ut lobortis neque pharetra. Phasellus vel erat condimentum diam vulputate rhoncus nec eu lacus. Suspendisse condimentum, magna eu pulvinar porta, nisi ligula accumsan urna, a suscipit turpis ex a elit. Proin ipsum dolor, ultrices at luctus eu, sagittis ac ligula."
-        "Etiam faucibus mauris et efficitur maximus. Proin fringilla fringilla volutpat. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi velit elit, convallis et maximus a, placerat non nisl. Duis porttitor convallis odio. Integer aliquam aliquam tortor non blandit. Duis nec tortor suscipit, viverra felis nec, laoreet ex. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce viverra nulla ut interdum dapibus. Cras vulputate luctus tellus, ut elementum quam gravida ut. Donec pulvinar nunc molestie turpis ullamcorper, at interdum magna molestie. Aenean pellentesque felis quis blandit in."
-};
 
 typedef enum {SEND, RECV} app_mode;
 typedef int bool;
@@ -64,6 +59,7 @@ static int log_enabled = 0;
 static char *log_file;
 static FILE *log;
 static const char *progname;
+static char* mydata = NULL;
 
 static void signal_handler(int signum)
 {
@@ -173,10 +169,11 @@ static void recv_body(stats_t *stats)
 {
     int sock, n;
     struct sockaddr_in servaddr, cliaddr;
-    char buf[2048];
     char clientname[100];
 
     printf("RECV mode\n");
+
+	 mydata = (char*)realloc(mydata, sizeof(*mydata)*MAX_PACKET_LEN);
 
     // Create a socket
     if ((sock = udpdk_socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
@@ -198,7 +195,7 @@ static void recv_body(stats_t *stats)
     while (app_alive) {
         // Bounce incoming packets
         int len = sizeof(cliaddr);
-        n = udpdk_recvfrom(sock, (void *)buf, 2048, 0, ( struct sockaddr *) &cliaddr, &len);
+        n = udpdk_recvfrom(sock, (void *)mydata, MAX_PACKET_LEN, 0, ( struct sockaddr *) &cliaddr, &len);
         if (n > 0) {
             stats->pkts_recv++;
             stats->bytes_recv += n;
@@ -206,10 +203,10 @@ static void recv_body(stats_t *stats)
                 stats->bytes_recv += ETH_HDR_LEN + IP_HDR_LEN + UDP_HDR_LEN;
             }
             if (dump) {
-                buf[n] = '\0';
+                mydata[n] = '\0';
                 printf("Received payload of %d bytes from %s port %d:\n%s\n", n,
                     inet_ntop(AF_INET,&cliaddr.sin_addr, clientname, sizeof(clientname)),
-                    ntohs(cliaddr.sin_port), buf);
+                    ntohs(cliaddr.sin_port), mydata);
             }
         }
     }
@@ -256,7 +253,16 @@ static int parse_app_args(int argc, char *argv[])
                 tx_rate = atoi(optarg);
                 break;
             case 's':
-                pktlen = atoi(optarg);
+					 pktlen = atoi(optarg);
+					 if (pktlen > MAX_PACKET_LEN) {
+						 fprintf(stderr, "Packet len too big! %d > %d\n", pktlen, MAX_PACKET_LEN);
+						 return -1;
+					 }
+					 mydata = (char*)malloc(sizeof(*mydata)*pktlen);
+					 if (!mydata) {
+						 fprintf(stderr, "Couldn't allocate memory for the packet\n");
+						 return -1;
+					 }
                 break;
             case 'l':
                 log_enabled = 1;
@@ -383,6 +389,7 @@ pktgen_end:
         fclose(log);
     }
     // Cleanup
+	 free(mydata);
     udpdk_interrupt(0);
     udpdk_cleanup();
     return 0;

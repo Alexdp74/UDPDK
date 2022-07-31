@@ -23,7 +23,7 @@ LIBS+= -L${UDPDK_PATH}/udpdk -Wl,--whole-archive,-ludpdk,--no-whole-archive
 LIBS+= $(shell PKG_CONFIG_PATH=${UDPDK_DPDK}/pkgconfig pkg-config --libs libdpdk)
 LIBS+= -Wl,--no-whole-archive -lrt -lm -ldl -lcrypto -pthread -lnuma
 
-CFLAGS += $(WERROR_FLAGS) -O2 #3
+CFLAGS += $(WERROR_FLAGS) -g -O2 #3
 UDPDK_CFLAGS = $(shell PKG_CONFIG_PATH=${UDPDK_DPDK}/pkgconfig pkg-config --cflags libdpdk)
 
 TARGET="pktgen"
