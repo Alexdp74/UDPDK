@@ -30,6 +30,7 @@
 #include "udpdk_poller.h"
 #include "udpdk_sync.h"
 #include "udpdk_types.h"
+#include "udpdk_arp.h"
 
 #define RTE_LOGTYPE_INIT RTE_LOGTYPE_USER1
 #define RTE_LOGTYPE_CLOSE RTE_LOGTYPE_USER1
@@ -200,8 +201,9 @@ static int init_port(uint16_t port_num)
         return retval;
     }
 
-	 // Set the source MAC address
+	 // Set the source MAC and IP addresses
 	 rte_eth_macaddr_get(port_num, &config.src_mac_addr);
+	 config.src_ip_addr = *udpdk_arp_lookup_mac(&config.src_mac_addr);
 
     RTE_LOG(INFO, INIT, "Initialized port %d.\n", port_num);
     return 0;
@@ -364,7 +366,7 @@ int udpdk_init(int argc, char *argv[])
 
         // Let the poller process resume initialization
         ipc_notify_to_poller();
-        
+
         // Wait for the poller to be fully initialized
         RTE_LOG(INFO, INIT, "Waiting for the poller to complete its inialization...\n");
         ipc_wait_for_poller();
@@ -425,7 +427,7 @@ void udpdk_cleanup(void)
 
     // Free the memory of L4 switching table
     destroy_udp_bind_table();
- 
+
     // Free the memory for exch zone
     destroy_exch_memzone();
 

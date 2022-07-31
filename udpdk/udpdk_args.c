@@ -23,12 +23,7 @@ static char *progname;
 
 static int parse_handler(void* configuration, const char* section, const char* name, const char* value) {
 #define MATCH(s, n) strcmp(section, s) == 0 && strcmp(name, n) == 0
-	if (MATCH("port0", "ip_addr")) {
-		config.src_ip_addr.s_addr = inet_addr(value);
-		if (config.src_ip_addr.s_addr == (in_addr_t)(-1)) {
-			fprintf(stderr, "Can't parse IPv4 address: %s\n", value);
-		}
-	} else if (MATCH("dpdk", "lcores_primary")) {
+	if (MATCH("dpdk", "lcores_primary")) {
 		strncpy(config.lcores_primary, value, MAX_ARG_LEN-1);
 	} else if (MATCH("dpdk", "lcores_secondary")) {
 		strncpy(config.lcores_secondary, value, MAX_ARG_LEN-1);
