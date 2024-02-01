@@ -21,7 +21,7 @@
 
 #define PORT_PING   10000
 #define PORT_PONG   10001
-#define IP_PONG     "10.10.1.2"
+#define IP_PONG     "192.168.186.133"
 #define MAX_SAMPLES 100000
 
 typedef enum {PING, PONG} app_mode;
@@ -136,8 +136,9 @@ static void pong_body(void)
 
     while (app_alive) {
         // Bounce incoming packets
-        int len = sizeof(cliaddr);
+        unsigned int len = sizeof(cliaddr);
         n = udpdk_recvfrom(sock, (void *)&ts_msg, sizeof(struct timespec), 0, ( struct sockaddr *) &cliaddr, &len);
+        printf("Received a UDP packet of size %d bytes\n", n);
         if (n > 0) {
             udpdk_sendto(sock, (void *)&ts_msg, sizeof(struct timespec), 0, (const struct sockaddr *) &cliaddr, len);
         }

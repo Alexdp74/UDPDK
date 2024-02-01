@@ -34,12 +34,6 @@ static unsigned samples[MAX_SAMPLES];
 static unsigned n_samples = 0;
 static const char *progname;
 
-static void signal_handler(int signum)
-{
-    printf("Caught signal %d in pingpong main process\n", signum);
-    app_alive = 0;
-}
-
 static void ping_body(void)
 {
     struct sockaddr_in servaddr, destaddr;
@@ -133,7 +127,7 @@ static void pong_body(void)
 
     while (app_alive) {
         // Bounce incoming packets
-        int len = sizeof(cliaddr);
+        unsigned int len = sizeof(cliaddr);
         n = recvfrom(sock, (void *)&ts_msg, sizeof(struct timespec), 0, ( struct sockaddr *) &cliaddr, &len);
         if (n > 0) {
             sendto(sock, (void *)&ts_msg, sizeof(struct timespec), 0, (const struct sockaddr *) &cliaddr, len);

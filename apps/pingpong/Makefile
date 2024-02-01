@@ -5,32 +5,39 @@
 
 ROOTDIR=../..
 DEPSDIR=${ROOTDIR}/deps
-
-ifeq ($(RTE_TARGET),)
-$(error "Please define RTE_TARGET environment variable")
-endif
+PKGCONF = pkg-config
 
 ifeq ($(UDPDK_PATH),)
 	UDPDK_PATH=${ROOTDIR}
 endif
 
-# all source are stored in SRCS-y
-SRCS= main.c
+SRCS_DPDK:= main.c
+SRCS_SOCKETS:= linux_pingpong.c
 
-UDPDK_DPDK=${DEPSDIR}/dpdk/install/lib/${RTE_TARGET}/
+LIBS_DPDK:= -L${UDPDK_PATH}/udpdk -Wl,--whole-archive,-ludpdk,--no-whole-archive
+LIBS_DPDK+= $(shell $(PKGCONF) --libs libdpdk)
 
-LIBS+= -L${UDPDK_PATH}/udpdk -Wl,--whole-archive,-ludpdk,--no-whole-archive
-LIBS+= $(shell PKG_CONFIG_PATH=${UDPDK_DPDK}/pkgconfig pkg-config --libs libdpdk)
-LIBS+= -Wl,--no-whole-archive -lrt -lm -ldl -lcrypto -pthread -lnuma
+LDFLAGS_DPDK+= -Wl,--no-whole-archive -lrt -lm -ldl -lcrypto -pthread -lnuma
+LDFLAGS_SOCKETS+=
 
-CFLAGS += $(WERROR_FLAGS) -g -O2 #3
-UDPDK_CFLAGS = $(shell PKG_CONFIG_PATH=${UDPDK_DPDK}/pkgconfig pkg-config --cflags libdpdk)
+WERROR_FLAGS:= -Wall
+CFLAGS += $(WERROR_FLAGS)
+CFLAGS_DPDK:= -O2 $(shell $(PKGCONF) --cflags libdpdk)
+CFLAGS_SOCKETS:= -O2
 
-TARGET="pingpong"
-all:
-	cc -I${ROOTDIR}/udpdk -I${ROOTDIR}/udpdk/list ${UDPDK_CFLAGS} -o ${TARGET} ${SRCS} ${LIBS}
-	cc ${CFLAGS} -o linux_pingpong linux_pingpong.c
+TARGET_DPDK:=pingpong
+TARGET_SOCKETS:=pingpong-sockets
+
+all: ${TARGET_DPDK} ${TARGET_SOCKETS}
+
+${TARGET_DPDK}:
+	cc ${CFLAGS} ${CFLAGS_DPDK} -I${ROOTDIR}/udpdk -o ${TARGET_DPDK} \
+	   ${SRCS_DPDK} ${LIBS_DPDK} ${LDFLAGS}
+
+${TARGET_SOCKETS}:
+	cc ${CFLAGS} ${CFLAGS_SOCKETS} -I${ROOTDIR}/udpdk -o ${TARGET_SOCKETS} \
+	   ${SRCS_SOCKETS} ${LIBS_SOCKETS} ${LDFLAGS_SOCKETS}
 
 .PHONY: clean
 clean:
-	rm -f *.o ${TARGET} linux_pingpong
+	rm -f *.o ${TARGET_DPDK} ${TARGET_SOCKETS}
