@@ -4,38 +4,25 @@
 #
 
 ROOTDIR?=${CURDIR}/..
-DEPSDIR=${ROOTDIR}/deps
 PREFIX=/usr/local
 PREFIX_LIB=${PREFIX}/lib
 PREFIX_INCLUDE=/usr/local/include
 PREFIX_BIN=/usr/local/bin
 UDPDK_VERSION=1.0
+PKGCONF = pkg-config
 
-# root is only needed to perform install
-ifneq ($(shell id -u), 0)
-ifeq ($(RTE_TARGET),)
-$(error "Please define RTE_TARGET environment variable")
-endif
-endif
-
-UDPDK_DPDK=${DEPSDIR}/dpdk/install/lib/${RTE_TARGET}/
-
-INIH=${DEPSDIR}/inih
-
-CFLAGS= -march=native -g -O2
+CFLAGS= -march=native -O2
 CFLAGS+= -Wall -Wno-deprecated-declarations -Werror -Wno-unused-variable
 CFLAGS+= -fno-common -finline-limit=8000
 CFLAGS+= --param inline-unit-growth=100
 CFLAGS+= --param large-function-growth=1000
+CFLAGS += $(shell $(PKGCONF) --cflags inih) $(shell $(PKGCONF) --cflags libdpdk)
 
-UDPDK_CFLAGS+= $(shell PKG_CONFIG_PATH=${UDPDK_DPDK}/pkgconfig pkg-config --cflags libdpdk)
-UDPDK_CFLAGS+= -I${INIH}
-UDPDK_CFLAGS+= -I. -Ilist -Ishmalloc
-
-UDPDK_C= ${CC} -c $(UDPDK_CFLAGS) ${CFLAGS} ${WERROR} $<
+UDPDK_CFLAGS+= -I. -Ilist/ -Ishmalloc/
 
 UDPDK_CORE_SRCS+=    \
 	udpdk_args.c     \
+	udpdk_arp.c     \
 	udpdk_dump.c     \
 	udpdk_globals.c  \
 	udpdk_init.c     \
@@ -43,32 +30,29 @@ UDPDK_CORE_SRCS+=    \
 	udpdk_monitor.c  \
 	udpdk_poller.c   \
 	udpdk_syscall.c  \
-   udpdk_sync.c     \
-   udpdk_arp.c     \
+	udpdk_sync.c
 
 UDPDK_LIST_SRCS+=    \
-    list/udpdk_list.c      \
-    list/udpdk_list_node.c \
-    list/udpdk_list_iterator.c \
-    list/udpdk_list_globals.c \
-    list/udpdk_list_init.c
+	list/udpdk_list.c      \
+	list/udpdk_list_node.c \
+	list/udpdk_list_iterator.c \
+	list/udpdk_list_globals.c \
+	list/udpdk_list_init.c
 
 UDPDK_SHM_SRCS+=    \
-    shmalloc/udpdk_shmalloc.c \
+	shmalloc/udpdk_shmalloc.c
 
-SRCS+= ${UDPDK_CORE_SRCS}
-SRCS+= ${UDPDK_LIST_SRCS}
-SRCS+= ${UDPDK_SHM_SRCS}
-
+SRCS:= ${UDPDK_CORE_SRCS} ${UDPDK_LIST_SRCS} ${UDPDK_SHM_SRCS}
 OBJS+= $(patsubst %.c,%.o,${SRCS})
 
-INIH_OBJS+= ${INIH}/build/libinih.a
+UDPDK_CC= ${CC} -c $(DPDK_CFLAGS) $(UDPDK_CFLAGS) ${CFLAGS} ${WERROR} $<
+LIBS:= $(shell $(PKGCONF) --libs inih)
 
 all: libudpdk.a
 
 # Export only symbols defined in the UDPDK API (also exclude DPDK symbols)
 libudpdk.a: ${OBJS}
-	${LD} -d -r -o $*.ro ${OBJS} ${INIH_OBJS}
+	${LD} -d -r -o $*.ro ${OBJS} ${LIBS}
 	nm $*.ro  | grep -v ' U ' | cut -d ' ' -f 3 > $*_localize_list.tmp
 	objcopy --localize-symbols=$*_localize_list.tmp $*.ro
 	rm $*_localize_list.tmp
@@ -78,7 +62,7 @@ libudpdk.a: ${OBJS}
 	rm -f $*.ro
 
 ${OBJS}: %.o: %.c
-	${UDPDK_C} -o $@
+	${UDPDK_CC} -o $@
 
 .PHONY: clean
 clean:

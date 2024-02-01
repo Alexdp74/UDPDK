@@ -138,18 +138,16 @@ static int init_port(uint16_t port_num)
         .rxmode = {
             .mq_mode = RTE_ETH_MQ_RX_NONE,
     //        .max_rx_pkt_len = RTE_MIN(JUMBO_FRAME_MAX_SIZE, dev_info.max_rx_pktlen),
-            .split_hdr_size = 0,
+            //.split_hdr_size = 0,
             .offloads = (RTE_ETH_RX_OFFLOAD_CHECKSUM |
                          RTE_ETH_RX_OFFLOAD_SCATTER),
 //                         RTE_ETH_RX_OFFLOAD_JUMBO_FRAME),
         },
         .txmode = {
-				.offloads = RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
-					RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
-					RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
-					RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
-					RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE,
-					.mq_mode = RTE_ETH_MQ_TX_NONE,
+            .offloads = RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
+                        RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+                        RTE_ETH_TX_OFFLOAD_UDP_CKSUM,
+            .mq_mode = RTE_ETH_MQ_TX_NONE,
         }
     };
 
@@ -201,11 +199,11 @@ static int init_port(uint16_t port_num)
         return retval;
     }
 
-	 // Set the source MAC and IP addresses
-	 rte_eth_macaddr_get(port_num, &config.src_mac_addr);
-	 config.src_ip_addr = *udpdk_arp_lookup_mac(&config.src_mac_addr);
-
+    // Set the source MAC and IP addresses
+    rte_eth_macaddr_get(port_num, &config.src_mac_addr);
+    config.src_ip_addr = *udpdk_arp_lookup_mac(&config.src_mac_addr);
     RTE_LOG(INFO, INIT, "Initialized port %d.\n", port_num);
+    
     return 0;
 }
 
