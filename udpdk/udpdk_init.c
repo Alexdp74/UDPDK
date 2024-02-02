@@ -203,7 +203,7 @@ static int init_port(uint16_t port_num)
     rte_eth_macaddr_get(port_num, &config.src_mac_addr);
     config.src_ip_addr = *udpdk_arp_lookup_mac(&config.src_mac_addr);
     RTE_LOG(INFO, INIT, "Initialized port %d.\n", port_num);
-    
+
     return 0;
 }
 
@@ -291,6 +291,14 @@ static int init_exchange_slots(void)
 int udpdk_init(int argc, char *argv[])
 {
     int retval;
+    int ppc[2]; // Used to store two ends of the pipe
+    unsigned char c = 0;
+
+    // Setup synchronization pipes
+    if (pipe(ppc) == -1) {
+        fprintf(stderr, "Pipe parent-child failed");
+        return -1;
+    }
 
     // Parse and initialize the arguments
     if (udpdk_parse_args(argc, argv) < 0) {  // initializes primary and secondary argc argv
@@ -301,6 +309,8 @@ int udpdk_init(int argc, char *argv[])
     // Start the secondary process
     poller_pid = fork();
     if (poller_pid != 0) {  // parent -> application
+        close(ppc[0]);
+
         // Initialize EAL (returns how many arguments it consumed)
         if (rte_eal_init(primary_argc, (char **)primary_argv) < 0) {
             RTE_LOG(ERR, INIT, "Cannot initialize EAL\n");
@@ -336,13 +346,6 @@ int udpdk_init(int argc, char *argv[])
             RTE_LOG(INFO, INIT, "Using the same port for RX and TX\n");
         }
 
-        // Initialize IPC channel to synchronize with the poller
-        retval = init_ipc_channel();
-        if (retval < 0) {
-            RTE_LOG(ERR, INIT, "Cannot initialize IPC channel for app-poller synchronization\n");
-            return -1;
-        }
-
         // Initialize memzone for exchange
         retval = init_exch_memzone();
         if (retval < 0) {
@@ -362,18 +365,41 @@ int udpdk_init(int argc, char *argv[])
             return -1;
         }
 
-        // Let the poller process resume initialization
-        ipc_notify_to_poller();
+        // Synchronize with child
+        retval = write(ppc[1], &c, sizeof(c));
+        if (retval < 0) {
+            RTE_LOG(ERR, INIT, "Cannot write to pipe\n");
+            return -1;
+        }
+        close(ppc[1]);
+
+        // Initialize IPC channel for app-poller synchronization
+        retval = init_ipc_channel();
+        if (retval < 0) {
+            RTE_LOG(ERR, INIT, "Cannot initialize IPC channel for app-poller synchronization\n");
+            return -1;
+        }
 
         // Wait for the poller to be fully initialized
-        RTE_LOG(INFO, INIT, "Waiting for the poller to complete its inialization...\n");
+        RTE_LOG(INFO, INIT, "UDPDK App initialization completed; waiting for poller\n");
         ipc_wait_for_poller();
     } else {  // child -> packet poller
-			usleep(5000000);
+        // Synchronize with parent
+        close(ppc[1]);
+        retval = read(ppc[0], &c, sizeof(c));
+        if (retval < 0) {
+            RTE_LOG(ERR, INIT, "Cannot read from pipe\n");
+            return -1;
+        }
+        close(ppc[0]);
+
+        // Initialize Poller
         if (poller_init(secondary_argc, (char **)secondary_argv) < 0) {
             RTE_LOG(INFO, INIT, "Poller initialization failed\n");
             return -1;
         }
+
+        // Run Poller
         poller_body();
     }
     // The parent process (application) returns immediately from init; instead, poller doesn't till it dies (or error)
