@@ -14,6 +14,8 @@
 #include "udpdk_sync.h"
 
 #define WAIT_MAX_CYCLES  100
+#define RTE_LOGTYPE_SYNC RTE_LOGTYPE_USER1
+
 extern struct rte_ring *ipc_app_to_pol;
 extern struct rte_ring *ipc_pol_to_app;
 extern struct rte_mempool *ipc_msg_pool;
@@ -22,15 +24,15 @@ extern struct rte_mempool *ipc_msg_pool;
 /* Initialize IPC channel for the synchonization between app and poller processes */
 int init_ipc_channel(void)
 {
-    ipc_app_to_pol = rte_ring_create("IPC_channel_app_to_pol", 1, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
+    ipc_app_to_pol = rte_ring_create("IPC_channel_app_to_pol", 2, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
     if (ipc_app_to_pol == NULL) {
         return -1;
     }
-    ipc_pol_to_app = rte_ring_create("IPC_channel_pol_to_app", 1, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
+    ipc_pol_to_app = rte_ring_create("IPC_channel_pol_to_app", 2, rte_socket_id(), RING_F_SP_ENQ | RING_F_SC_DEQ);
     if (ipc_pol_to_app == NULL) {
         return -1;
     }
-    ipc_msg_pool = rte_mempool_create("IPC_msg_pool", 5, 64, 0, 0, NULL, NULL, NULL, NULL, rte_socket_id(), 0);
+    ipc_msg_pool = rte_mempool_create("IPC_msg_pool", 15, 64, 0, 0, NULL, NULL, NULL, NULL, rte_socket_id(), 0);
     return 0;
 }
 
@@ -62,6 +64,7 @@ int ipc_wait_for_app(void)
         usleep(50000);
         c++;
         if (c > WAIT_MAX_CYCLES) {
+            RTE_LOG(ERR, SYNC, "ipc_wait_for_app() failed\n");
             return -1;
         }
     }
@@ -79,6 +82,7 @@ int ipc_wait_for_poller(void)
         usleep(50000);
         c++;
         if (c > WAIT_MAX_CYCLES) {
+            RTE_LOG(ERR, SYNC, "ipc_wait_for_poller() failed\n");
             return -1;
         }
     }
@@ -96,6 +100,7 @@ void ipc_notify_to_app(void)
     }
     // NOTE: no need to write anything in the message
     if (rte_ring_enqueue(ipc_pol_to_app, sync_msg) < 0) {
+        RTE_LOG(ERR, SYNC, "ipc_notify_to_app() failed\n");
         rte_mempool_put(ipc_msg_pool, sync_msg);
     }
 }
@@ -110,6 +115,7 @@ void ipc_notify_to_poller(void)
     }
     // NOTE: no need to write anything in the message
     if (rte_ring_enqueue(ipc_app_to_pol, sync_msg) < 0) {
+        RTE_LOG(ERR, SYNC, "ipc_notify_to_poller() failed\n");
         rte_mempool_put(ipc_msg_pool, sync_msg);
     }
 }
