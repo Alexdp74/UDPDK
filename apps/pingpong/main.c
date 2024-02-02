@@ -138,7 +138,6 @@ static void pong_body(void)
         // Bounce incoming packets
         unsigned int len = sizeof(cliaddr);
         n = udpdk_recvfrom(sock, (void *)&ts_msg, sizeof(struct timespec), 0, ( struct sockaddr *) &cliaddr, &len);
-        printf("Received a UDP packet of size %d bytes\n", n);
         if (n > 0) {
             udpdk_sendto(sock, (void *)&ts_msg, sizeof(struct timespec), 0, (const struct sockaddr *) &cliaddr, len);
         }
@@ -160,7 +159,6 @@ static int parse_app_args(int argc, char *argv[])
     int c;
 
     progname = argv[0];
-
     while ((c = getopt(argc, argv, "a:c:f:d:l:")) != -1) {
         switch (c) {
             case 'a':
