@@ -34,7 +34,6 @@
 #define RTE_LOGTYPE_POLLBODY RTE_LOGTYPE_USER1
 #define RTE_LOGTYPE_POLLINIT RTE_LOGTYPE_USER1
 #define RTE_LOGTYPE_POLLINTR RTE_LOGTYPE_USER1
-#define RTE_LOGTYPE_POLLCBCK RTE_LOGTYPE_USER1
 
 static volatile int poller_alive = 1;
 
@@ -219,7 +218,7 @@ static int check_ptype(int port_num)
         RTE_LOG(WARNING, POLLINIT, "Port %d cannot parse any L3 or L4_UDP packets\n", port_num);
         return 0;
     }
-    
+
     uint32_t ptypes[nb_ptypes];
     nb_ptypes = rte_eth_dev_get_supported_ptypes(port_num, mask, ptypes, nb_ptypes);
     for (i = 0; i < nb_ptypes; ++i) {
@@ -251,7 +250,7 @@ static int check_ptype(int port_num)
     else {
         RTE_LOG(INFO, POLLINIT, "Port %d can parse RTE_PTYPE_L4_UDP\n", port_num);
     }
-    
+
     if (l3_ipv4 && l3_ipv6 && l4_udp)
         return 1;
     return 0;
@@ -269,8 +268,7 @@ static inline void parse_ptype(struct rte_mbuf *m)
     struct rte_ipv6_hdr *ipv6_hdr;
     eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
     ether_type = eth_hdr->ether_type;
-    RTE_LOG(INFO, POLLCBCK, "ether_type: %hu\n", ether_type);
-    
+
     l3 = (uint8_t *)eth_hdr + sizeof(struct rte_ether_hdr);
     if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4)) {
         ipv4_hdr = (struct rte_ipv4_hdr *)l3;
@@ -284,8 +282,7 @@ static inline void parse_ptype(struct rte_mbuf *m)
         else {
             packet_type |= RTE_PTYPE_L3_IPV4_EXT;
         }
-        RTE_LOG(INFO, POLLCBCK, "Detected packet_type IPv4: %u\n", packet_type);
-    } 
+    }
     else if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6)) {
         ipv6_hdr = (struct rte_ipv6_hdr *)l3;
         if (ipv6_hdr->proto == IPPROTO_UDP) {
@@ -294,12 +291,8 @@ static inline void parse_ptype(struct rte_mbuf *m)
         else {
             packet_type |= RTE_PTYPE_L3_IPV6_EXT_UNKNOWN;
         }
-        RTE_LOG(INFO, POLLCBCK, "Detected packet_type IPv6: %u\n", packet_type);
     }
-    else {
-        RTE_LOG(WARNING, POLLCBCK, "No detected packet_type.\n");
-    }
-    
+
     m->packet_type = packet_type;
 }
 
@@ -311,14 +304,14 @@ static uint16_t parse_ptype_cb(uint16_t port __rte_unused, uint16_t queue __rte_
     if (unlikely(nb_pkts == 0)) {
         return nb_pkts;
     }
-    
+
     rte_prefetch0(rte_pktmbuf_mtod(pkts[0], struct ether_hdr *));
     for (i = 0; i < (unsigned int) (nb_pkts - 1); ++i) {
         rte_prefetch0(rte_pktmbuf_mtod(pkts[i+1], struct ether_hdr *));
         parse_ptype(pkts[i]);
     }
     parse_ptype(pkts[i]);
-    
+
     return nb_pkts;
 }
 
@@ -327,16 +320,16 @@ int poller_init(int argc, char *argv[])
 {
     int retval, ptype_supported;
 
+    // Setup signals for termination
+    signal(SIGINT, poller_sighandler);
+    signal(SIGTERM, poller_sighandler);
+
     // Initialize EAL
     retval = rte_eal_init(argc, argv);
     if (retval < 0) {
         RTE_LOG(ERR, POLLINIT, "Cannot initialize EAL for poller\n");
         return -1;
     }
-
-    // Setup signals for termination
-    signal(SIGINT, poller_sighandler);
-    signal(SIGTERM, poller_sighandler);
 
     // Initialize the IPC channel to synchronize with the app
     while (retrieve_ipc_channel() < 0) {
@@ -347,10 +340,6 @@ int poller_init(int argc, char *argv[])
         }
         sleep(1);
     }
-    RTE_LOG(INFO, POLLINIT, "IPC initialized\n");
-
-    // Wait for a synchronization signal from the application process before proceeding
-    ipc_wait_for_app();
 
     // Setup memory allocators
     retval = setup_allocators();
@@ -379,13 +368,10 @@ int poller_init(int argc, char *argv[])
         RTE_LOG(ERR, POLLINIT, "Cannot setup table for UDP port switching\n");
         return -1;
     }
-    
+
     // Check if the required ptypes are supported via hardware
     ptype_supported = check_ptype(PORT_RX);
-    if (!ptype_supported) {
-        RTE_LOG(WARNING, POLLINIT, "Port %d: parse packet type info in software\n", PORT_RX);
-    }
-    
+
     /* Register Rx callback if ptypes are not supported */
     if (!ptype_supported &&
         !rte_eth_add_rx_callback(PORT_RX, QUEUE_RX, parse_ptype_cb, NULL)) {
@@ -393,8 +379,9 @@ int poller_init(int argc, char *argv[])
         return -1;
     }
     else if (!ptype_supported) {
-        RTE_LOG(INFO, POLLINIT, "Added rx callback: port=%d, queue=%d\n", PORT_RX, QUEUE_RX);
+        RTE_LOG(INFO, POLLINIT, "Added RX callback to identify packet type via software for port=%d, queue=%d\n", PORT_RX, QUEUE_RX);
     }
+    RTE_LOG(INFO, POLLINIT, "UDPDK Poller initialized\n");
 
     // Notify the primary about the successful initialization
     ipc_notify_to_app();
@@ -409,7 +396,6 @@ static void flush_rx_queue(uint16_t idx)
 
     // Skip if no packets received
     if (exch_slots[idx].rx_count == 0) {
-        RTE_LOG(WARNING, POLLBODY, "exch_slots[%hu].rx_count == 0\n", idx);
         return;
     }
 
@@ -418,12 +404,8 @@ static void flush_rx_queue(uint16_t idx)
 
     // Put the packets in the ring
     if (rte_ring_enqueue_bulk(rx_q, (void **)exch_slots[idx].rx_buffer, exch_slots[idx].rx_count, NULL) == 0) {
-        RTE_LOG(WARNING, POLLINIT, "rte_ring_enqueue_bulk() did not enqueue any packets (%hu in queue)\n", exch_slots[idx].rx_count);
         for (j = 0; j < exch_slots[idx].rx_count; j++)
             rte_pktmbuf_free(exch_slots[idx].rx_buffer[j]);
-    }
-    else {
-        RTE_LOG(INFO, POLLINIT, "enqueued %hu packets in rx_queue\n", exch_slots[idx].rx_count);
     }
     exch_slots[idx].rx_count = 0;
 }
@@ -432,7 +414,6 @@ static inline void enqueue_rx_packet(uint8_t exc_buf_idx, struct rte_mbuf *buf)
 {
     // Enqueue the packet for the appropriate exc buffer, and increment the counter
     exch_slots[exc_buf_idx].rx_buffer[exch_slots[exc_buf_idx].rx_count++] = buf;
-    RTE_LOG(INFO, POLLINIT, "enqueued a packet in exch_slots[%hhu].rx_buffer[%hu]\n", exc_buf_idx, (uint16_t) exch_slots[exc_buf_idx].rx_count - 1);
 }
 
 static inline uint16_t is_udp_pkt(struct rte_ipv4_hdr *ip_hdr)
@@ -462,7 +443,6 @@ static inline void reassemble(struct rte_mbuf *m, uint16_t portid, uint32_t queu
     uint16_t udp_dst_port;
     unsigned long ip_dst_addr;
     int sock_id;
-    bool delivered_once = false;
     bool delivered_last = false;
 
     rxq = &qconf->rx_queue;
@@ -509,12 +489,10 @@ static inline void reassemble(struct rte_mbuf *m, uint16_t portid, uint32_t queu
     }
     udp_dst_port = get_udp_dst_port((struct rte_udp_hdr *)(ip_hdr + 1));
     ip_dst_addr = get_ipv4_dst_addr(ip_hdr);
-    RTE_LOG(INFO, POLLBODY, "Received a UDP packet with dest IP %lu and dest port %hu\n", ip_dst_addr, ntohs(udp_dst_port));
 
     // Find the sock_ids corresponding to the UDP dst port (L4 switching) and enqueue the packet to its queue
     udpdk_list_t *binds = btable_get_bindings(udp_dst_port);
     if (binds == NULL) {
-        RTE_LOG(WARNING, POLLBODY, "Dropping packet for port %d: no socket bound\n", ntohs(udp_dst_port));
         return;
     }
     udpdk_list_iterator_t *it = list_iterator_new(binds, LIST_HEAD);
@@ -529,9 +507,7 @@ static inline void reassemble(struct rte_mbuf *m, uint16_t portid, uint32_t queu
         // If matching
         if (likely((ip_dst_addr == ip_oth) || (ip_oth == INADDR_ANY))) {
             // Deliver to this socket
-            RTE_LOG(INFO, POLLBODY, "Found a matching socket; enqueue the UDP datagram\n");
             enqueue_rx_packet(((struct bind_info *)(node->val))->sockfd, m);
-            delivered_once = true;
             // If other socket may exist on the same port, keep scanning
             if (oth_reuseaddr || oth_reuseport) {
                 m = rte_pktmbuf_clone(m, rxq->pool);
@@ -545,9 +521,6 @@ static inline void reassemble(struct rte_mbuf *m, uint16_t portid, uint32_t queu
     }
     if (!delivered_last) {
         rte_pktmbuf_free(m);
-    }
-    if (!delivered_once) {
-        RTE_LOG(WARNING, POLLBODY, "Dropped packet to port %d: no socket matching\n", ntohs(udp_dst_port));
     }
     list_iterator_destroy(it);
 }
@@ -656,8 +629,6 @@ void poller_body(void)
         // Receive packets from DPDK port 0 (queue 0)   TODO use more queues (RSS)
         rx_count = rte_eth_rx_burst(PORT_RX, QUEUE_RX, rx_mbuf_table, RX_MBUF_TABLE_SIZE);
         if (likely(rx_count > 0)) {
-            RTE_LOG(INFO, POLLBODY, "rte_eth_rx_burst() returned %hu packets\n", rx_count);
-            
             // Prefetch some packets (to reduce cache misses later)
             for (j = 0; j < PREFETCH_OFFSET && j < rx_count; j++) {
                 rte_prefetch0(rte_pktmbuf_mtod(rx_mbuf_table[j], void *));
@@ -668,21 +639,18 @@ void poller_body(void)
             if (rx_count > PREFETCH_OFFSET) {
                 for (; j < (rx_count - PREFETCH_OFFSET); j++) {
                     rte_prefetch0(rte_pktmbuf_mtod(rx_mbuf_table[j + PREFETCH_OFFSET], void *));
-                    RTE_LOG(INFO, POLLBODY, "calling reassemble() for packet #%d after prefetch\n", j);
                     reassemble(rx_mbuf_table[j], PORT_RX, QUEUE_RX, qconf, cur_tsc);
                 }
             }
 
             // Reassemble the second batch of fragments
             for (; j < rx_count; j++) {
-                RTE_LOG(INFO, POLLBODY, "calling reassemble() for packet #%d\n", j);
                 reassemble(rx_mbuf_table[j], PORT_RX, QUEUE_RX, qconf, cur_tsc);
             }
 
             // Effectively flush the packets to exchange buffers
             for (i = 0; i < NUM_SOCKETS_MAX; i++) {
                 if (exch_zone_desc->slots[i].used) {
-                    RTE_LOG(INFO, POLLBODY, "calling flush_rx_queue() with index %d\n", i);
                     flush_rx_queue(i);
                 }
             }
@@ -691,6 +659,7 @@ void poller_body(void)
             rte_ip_frag_free_death_row(&qconf->death_row, PREFETCH_OFFSET);
         }
     }
+
     // Exit directly to avoid returning in the application main (as we forked)
     RTE_LOG(INFO, POLLBODY, "Polling process exiting.\n");
     exit(0);
